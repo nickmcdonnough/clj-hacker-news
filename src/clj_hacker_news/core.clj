@@ -1,7 +1,7 @@
 (ns clj-hacker-news.core
   (:require [clj-http.client :as client]
             [clojure.data.json :as json]
-            [clj-time.core :as t]))
+            [clj-time.coerce :as c]))
 
 ;; Live API urls.
 (def top-100 "https://hacker-news.firebaseio.com/v0/topstories/.json")
@@ -13,6 +13,8 @@
 ;; Users API url.
 (def users-api-base "https://hacker-news.firebaseio.com/v0/user/")
 
+;; Time helper
+(defn to-utc [utc] (c/from-long (* 1000 utc)))
 
 (defn retrieve-item
   "Retrieve an item (post, comment, etc.)"
@@ -41,7 +43,7 @@
     (str
       "Title: " title "\n"
       "Link:  " url "\n"
-      "Date:  " time "\n"
+      "Date:  " (to-utc time) "\n"
       "Score: " score "\n"
       "By:    " by "\n")))
 
@@ -51,12 +53,12 @@
   (let [{:keys [text score time by]} comment]
     (str
       "Text:  " text "\n"
-      "Date:  " time
+      "Date:  " (to-utc time) "\n"
       "Score: " score "\n"
       "By:    " by "\n")))
 
 (defn preview-item
-  "Preview dispatching method. Takes stories, comments, polls, and poll options
+  "Preview dispatching function. Takes stories, comments, polls, and poll options
   and dispatches them to their respective pretty printing function."
   [item-id]
   (let [item (retrieve-item)]
