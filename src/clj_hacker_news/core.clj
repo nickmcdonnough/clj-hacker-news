@@ -1,7 +1,6 @@
 (ns clj-hacker-news.core
   (:require [clj-http.client :as client]
-            [clojure.data.json :as json]
-            [clj-time.coerce :as c]))
+            [clojure.data.json :as json]))
 
 ;; Live API urls.
 (def top-100 "https://hacker-news.firebaseio.com/v0/topstories/.json")
@@ -13,8 +12,13 @@
 ;; Users API url.
 (def users-api-base "https://hacker-news.firebaseio.com/v0/user/")
 
-;; Time helper
-(defn to-utc [utc] (c/from-long (* 1000 utc)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; All the basic functions to get users and items. Some kind of useless formatting functions
+;; for printing to the terminal.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn retrieve-item
   "Retrieve an item (post, comment, etc.)"
@@ -54,12 +58,11 @@
     (str
       "Text:  " text "\n"
       "Date:  " (to-utc time) "\n"
-      "Score: " score "\n"
       "By:    " by "\n")))
 
 (defn preview-item
   "Preview dispatching function. Takes stories, comments, polls, and poll options
-  and dispatches them to their respective pretty printing function."
+   and dispatches them to their respective pretty printing function."
   [item-id]
   (let [item (retrieve-item)]
     (case (:type item)
@@ -70,7 +73,7 @@
 
 (defn preview-user
   "Takes a map of user information received as JSON from the Users API and
-  returns a prettied up string ready to be printed."
+   returns a prettied up string ready to be printed."
   [user]
   (let [{:keys [about created delay id karma]} user]
     (str
@@ -79,3 +82,16 @@
       "Created: " created "\n"
       "Delay:   " delay "\n"
       "About:   " about "\n")))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn build-comment-tree
+  "Build a tree of story comments. Tree contains only item IDs."
+  [item]
+  (let [data (select-keys item [:by :text :title])
+        kids (for [x (:kids item)]
+               (build-comment-tree (retrieve-item x)))]
+    (cons data kids)))
