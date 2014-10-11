@@ -1,5 +1,5 @@
 (ns clj-hacker-news.core
-  (:require [clj-http.client :as client]
+  (:require [clj-http.lite.client :as client]
             [clojure.data.json :as json]))
 
 ;; Live API urls.
@@ -19,18 +19,23 @@
 ;; for printing to the terminal.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn error [msg] (str "clj-hacker-news error:: " msg))
 
 (defn retrieve-item
-  "Retrieve an item (post, comment, etc.)"
+  "Retrieve an item (post, comment, etc.). Returns nil if no such item."
   [item-number]
-  (let [response (client/get (str items-api-base item-number ".json"))]
-    (when (client/success? response) (->> response :body json/read-json))))
+  (let [response (try
+                   (client/get (str items-api-base item-number ".json"))
+                   (catch Exception e (error (.getMessage e))))]
+    (->> response :body json/read-json)))
 
 (defn retrieve-user
-  "Retrieve a user"
-  [user]
-  (let [response (client/get (str users-api-base user ".json"))]
-    (when (client/success? response) (->> response :body json/read-json))))
+  "Retrieve a user. Returns nil if user does not exist."
+  [username]
+   (let [response (try
+                    (client/get (str users-api-base username ".json"))
+                    (catch Exception e (error (.getMessage e))))]
+     (->> response :body json/read-json)))
 
 (defn get-top-n
   "From the current top 100 stories grab the first n."
@@ -47,7 +52,7 @@
     (str
       "Title: " title "\n"
       "Link:  " url "\n"
-      "Date:  " (to-utc time) "\n"
+      "Date:  " time "\n"
       "Score: " score "\n"
       "By:    " by "\n")))
 
@@ -56,20 +61,19 @@
   [comment]
   (let [{:keys [text score time by]} comment]
     (str
-      "Text:  " text "\n"
-      "Date:  " (to-utc time) "\n"
-      "By:    " by "\n")))
+      "Date:  " time "\n"
+      "By:    " by "\n"
+      "Text:  " text "\n")))
 
 (defn preview-item
-  "Preview dispatching function. Takes stories, comments, polls, and poll options
-   and dispatches them to their respective pretty printing function."
-  [item-id]
-  (let [item (retrieve-item)]
-    (case (:type item)
-      "story" (story-preview item)
-      "comment" (comment-preview item)
-      "poll" (poll-preview item)
-      "pollopt" (pollopt-preview item))))
+  "Preview dispatching function. Takes stories, comments, polls, and poll
+   options and dispatches them to their respective pretty printing function."
+  [item]
+  (case (:type item)
+    "story" (story-preview item)
+    "comment" (comment-preview item)))
+    ;"poll" (poll-preview item)
+    ;"pollopt" (pollopt-preview item)
 
 (defn preview-user
   "Takes a map of user information received as JSON from the Users API and
