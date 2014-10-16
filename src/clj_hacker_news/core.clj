@@ -26,7 +26,7 @@
    as {:error 'error status message'}"
   [response]
   (if (> (response :status) 299)
-    {:error ((response :headers) "status")}))
+    (assoc {} :error ((response :headers) "status"))))
 
 (defn null-success-response
   "Checks for a response with a status of 200 and a
@@ -34,14 +34,14 @@
   [response]
   (if (and (= (response :status) 200)
            (= (response :body) "null"))
-    {:error "Item/User not found"}))
+    (assoc {} :error "Item/User not found")))
 
 (defn retrieve-item
   "Retrieve an item (post, comment, etc.). Returns error if no such item."
   [item-number]
   (let [response (client/get (str items-api-base item-number ".json")
                              {:throw-exceptions false})
-        error-msg  (or (http-error response)
+        error-msg  (or (http-error-response response)
                        (null-success-response response))]
     
     (if error-msg (error (error-msg :error)) 
@@ -52,7 +52,7 @@
   [username]
   (let [response (client/get (str users-api-base username ".json")
                              {:throw-exceptions false})
-        error-msg (or (http-error response)
+        error-msg (or (http-error-response response)
                        (null-success-response response))]
     (if error-msg (error (error-msg :error))
         (->> response :body json/read-json))))
