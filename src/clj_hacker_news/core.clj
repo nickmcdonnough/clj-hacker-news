@@ -41,10 +41,10 @@
   [item-number]
   (let [response (client/get (str items-api-base item-number ".json")
                              {:throw-exceptions false})
-        error-msg  (or (http-error-response response)
+        error-map  (or (http-error-response response)
                        (null-success-response response))]
     
-    (if error-msg (error (error-msg :error)) 
+    (if error-map (merge response error-map) 
         (->> response :body json/read-json))))
 
 (defn retrieve-user
@@ -52,9 +52,9 @@
   [username]
   (let [response (client/get (str users-api-base username ".json")
                              {:throw-exceptions false})
-        error-msg (or (http-error-response response)
+        error-map (or (http-error-response response)
                        (null-success-response response))]
-    (if error-msg (error (error-msg :error))
+    (if error-map (merge response error-map)
         (->> response :body json/read-json))))
 
 (defn get-top-n
