@@ -21,21 +21,41 @@
 
 (defn error [msg] (str "clj-hacker-news error:: " msg))
 
+(defn http-error-response
+  "Checks for error http response and returns it
+   as {:error 'error status message'}"
+  [response]
+  (if (> (response :status) 299)
+    (assoc {} :error ((response :headers) "status"))))
+
+(defn null-success-response
+  "Checks for a response with a status of 200 and a
+   body of 'null' which seems to indicate an item does not exist"
+  [response]
+  (if (and (= (response :status) 200)
+           (= (response :body) "null"))
+    (assoc {} :error "Item/User not found")))
+
 (defn retrieve-item
-  "Retrieve an item (post, comment, etc.). Returns nil if no such item."
+  "Retrieve an item (post, comment, etc.). Returns error if no such item."
   [item-number]
-  (let [response (try
-                   (client/get (str items-api-base item-number ".json"))
-                   (catch Exception e (error (.getMessage e))))]
-    (->> response :body json/read-json)))
+  (let [response (client/get (str items-api-base item-number ".json")
+                             {:throw-exceptions false})
+        error-map  (or (http-error-response response)
+                       (null-success-response response))]
+    
+    (if error-map (merge response error-map) 
+        (->> response :body json/read-json))))
 
 (defn retrieve-user
-  "Retrieve a user. Returns nil if user does not exist."
+  "Retrieve a user. Returns error if user does not exist."
   [username]
-   (let [response (try
-                    (client/get (str users-api-base username ".json"))
-                    (catch Exception e (error (.getMessage e))))]
-     (->> response :body json/read-json)))
+  (let [response (client/get (str users-api-base username ".json")
+                             {:throw-exceptions false})
+        error-map (or (http-error-response response)
+                       (null-success-response response))]
+    (if error-map (merge response error-map)
+        (->> response :body json/read-json))))
 
 (defn get-top-n
   "From the current top 100 stories grab the first n."
